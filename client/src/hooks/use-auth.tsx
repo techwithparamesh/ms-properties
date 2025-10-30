@@ -39,18 +39,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signup = async ({ name, email, password }: { name: string; email: string; password: string }) => {
-    // In a real app, call backend. Here we simulate and store locally.
-    // For demo, first user is admin, others are regular users
-    const role = email === "admin@site.com" ? "admin" : "user";
-    const newUser: User = { id: String(Date.now()), name, email, role };
-    persist(newUser);
-    return newUser;
+    // Call backend API for signup
+    const res = await fetch("/api/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || "Signup failed");
+    }
+    // After signup, log in the user automatically
+    return await login({ email, password });
   };
 
   const login = async ({ email, password }: { email: string; password: string }) => {
-    // In a real app, verify credentials. Here we accept any email/password and create a user entry.
-    const role = email === "admin@site.com" ? "admin" : "user";
-    const loggedIn: User = { id: String(Date.now()), name: email.split("@")[0] || "User", email, role };
+    // Call backend API for login
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || "Login failed");
+    }
+    const loggedIn: User = {
+      id: data.user.id,
+      name: data.user.name,
+      email,
+      role: data.user.role,
+    };
     persist(loggedIn);
     return loggedIn;
   };

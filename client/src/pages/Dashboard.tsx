@@ -18,7 +18,87 @@ import { useLocation } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { insertPropertySchema, type Property, type InsertProperty } from "@shared/schema";
 
+// Custom type for form to allow amenities as string for editing, images as array
+type InsertPropertyForm = Omit<InsertProperty, "amenities"> & { amenities: string; images: string[] };
+// InsertPropertyForm amenities is string for editing, but mutation expects array
+
 export default function Dashboard() {
+  // Admin reject mutation
+
+  const rejectMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const property = properties?.find((p) => p.id === id);
+      if (!property) throw new Error("Property not found");
+      const updateData = {
+        ...property,
+        status: "rejected",
+        ownerId: property.ownerId ? String(property.ownerId) : "",
+        mobile: property.mobile || "",
+        amenities: Array.isArray(property.amenities)
+          ? property.amenities
+          : typeof property.amenities === "string"
+            ? property.amenities.split(",").map((s: string) => s.trim()).filter(Boolean)
+            : property.amenities == null
+              ? []
+              : String(property.amenities ?? "").split(",").map((s: string) => s.trim()).filter(Boolean),
+        images: Array.isArray(property.images)
+          ? property.images
+          : typeof property.images === "string"
+            ? property.images.split(",").map((s: string) => s.trim()).filter(Boolean)
+            : property.images == null
+              ? []
+              : String(property.images ?? "").split(",").map((s: string) => s.trim()).filter(Boolean),
+      };
+      return await apiRequest("PATCH", `/api/properties/${id}/reject`, updateData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      setTimeout(() => queryClient.refetchQueries({ queryKey: ["/api/properties"] }), 200);
+      toast({ title: "Property rejected!" });
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || error?.message || "Failed to reject property";
+      toast({ title: message, variant: "destructive" });
+    },
+  });
+
+  // Admin mark as sold mutation
+  const markSoldMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const property = properties?.find((p) => p.id === id);
+      if (!property) throw new Error("Property not found");
+      const updateData = {
+        ...property,
+        status: "sold",
+        ownerId: property.ownerId ? String(property.ownerId) : "",
+        mobile: property.mobile || "",
+        amenities: Array.isArray(property.amenities)
+          ? property.amenities
+          : typeof property.amenities === "string"
+            ? property.amenities.split(",").map((s: string) => s.trim()).filter(Boolean)
+            : property.amenities == null
+              ? []
+              : String(property.amenities ?? "").split(",").map((s: string) => s.trim()).filter(Boolean),
+        images: Array.isArray(property.images)
+          ? property.images
+          : typeof property.images === "string"
+            ? property.images.split(",").map((s: string) => s.trim()).filter(Boolean)
+            : property.images == null
+              ? []
+              : String(property.images ?? "").split(",").map((s: string) => s.trim()).filter(Boolean),
+      };
+      return await apiRequest("PATCH", `/api/properties/${id}/sold`, updateData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      setTimeout(() => queryClient.refetchQueries({ queryKey: ["/api/properties"] }), 200);
+      toast({ title: "Property marked as sold!" });
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || error?.message || "Failed to mark as sold";
+      toast({ title: message, variant: "destructive" });
+    },
+  });
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [showAuthDialog, setShowAuthDialog] = useState(false);
@@ -26,11 +106,26 @@ export default function Dashboard() {
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const { toast } = useToast();
 
-  const { data: properties, isLoading, error } = useQuery<Property[]>({
-    queryKey: ["/api/properties"],
+  // For users, fetch only their properties; for admin, fetch all
+  const { data: properties, isLoading, error, refetch } = useQuery<Property[]>({
+    queryKey: [user?.role === 'user' ? "/api/my-properties" : "/api/properties", user?.id],
+    queryFn: async () => {
+      if (user?.role === 'user') {
+        if (!user?.id) return [];
+        const res = await fetch(`/api/my-properties?userId=${user.id}`);
+        if (!res.ok) throw new Error('Failed to fetch user properties');
+        return await res.json();
+      } else {
+        const res = await fetch('/api/properties');
+        if (!res.ok) throw new Error('Failed to fetch properties');
+        return await res.json();
+      }
+    },
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
-  const form = useForm<InsertProperty>({
+  const form = useForm<InsertPropertyForm>({
     resolver: zodResolver(insertPropertySchema),
     defaultValues: {
       title: "",
@@ -43,21 +138,45 @@ export default function Dashboard() {
       bathrooms: 0,
       sqft: 0,
       images: [],
-      amenities: [],
+      amenities: "",
       latitude: "0",
       longitude: "0",
       status: "available",
       featured: 0,
+      ownerId: user?.id ? String(user.id) : "", // Ensure ownerId is a string
+      mobile: "",
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: InsertProperty) => {
-      // All new properties are created as 'pending' for approval and assigned to the current user
-      return await apiRequest("POST", "/api/properties", { ...data, status: "pending", ownerId: user?.id });
+    mutationFn: async (data: InsertPropertyForm) => {
+      // Convert amenities and images to arrays before sending
+      const amenitiesArray = Array.isArray(data.amenities)
+        ? data.amenities
+        : typeof data.amenities === "string"
+          ? (data.amenities as string).split(",").map((s: string) => s.trim()).filter(Boolean)
+          : [];
+      const imagesArray = Array.isArray(data.images)
+        ? data.images
+        : typeof data.images === "string"
+          ? (data.images as string).split(",").map((s: string) => s.trim()).filter(Boolean)
+          : [];
+      const submitData: InsertProperty = {
+        ...data,
+        amenities: amenitiesArray,
+        images: imagesArray,
+        ownerId: user?.id ? String(user.id) : "", // Ensure ownerId is a string
+      };
+      return await apiRequest("POST", "/api/properties", { ...submitData, status: "pending" });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      if (user?.role === "user") {
+        queryClient.invalidateQueries({ queryKey: ["/api/my-properties", user.id] });
+        setTimeout(() => queryClient.refetchQueries({ queryKey: ["/api/my-properties", user.id] }), 200);
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+        setTimeout(() => queryClient.refetchQueries({ queryKey: ["/api/properties"] }), 200);
+      }
       toast({ title: "Property submitted for admin approval!" });
       setDialogOpen(false);
       form.reset();
@@ -69,24 +188,54 @@ export default function Dashboard() {
   // Admin approval mutation
   const approveMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest("PATCH", `/api/properties/${id}`, { status: "available" });
+      const property = properties?.find((p) => p.id === id);
+      if (!property) throw new Error("Property not found");
+      const updateData = {
+        ...property,
+        status: "available",
+        ownerId: property.ownerId ? String(property.ownerId) : "",
+        mobile: property.mobile || "",
+        amenities: Array.isArray(property.amenities)
+          ? property.amenities
+          : typeof property.amenities === "string"
+            ? property.amenities.split(",").map((s: string) => s.trim()).filter(Boolean)
+            : property.amenities == null
+              ? []
+              : String(property.amenities ?? "").split(",").map((s: string) => s.trim()).filter(Boolean),
+        images: Array.isArray(property.images)
+          ? property.images
+          : typeof property.images === "string"
+            ? property.images.split(",").map((s: string) => s.trim()).filter(Boolean)
+            : property.images == null
+              ? []
+              : String(property.images ?? "").split(",").map((s: string) => s.trim()).filter(Boolean),
+      };
+      return await apiRequest("PATCH", `/api/properties/${id}`, updateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      setTimeout(() => queryClient.refetchQueries({ queryKey: ["/api/properties"] }), 200);
       toast({ title: "Property approved!" });
     },
-    onError: () => {
-      toast({ title: "Failed to approve property", variant: "destructive" });
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || error?.message || "Failed to approve property";
+      toast({ title: message, variant: "destructive" });
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: InsertProperty }) => {
-      return await apiRequest("PATCH", `/api/properties/${id}`, data);
+  return await apiRequest("PATCH", `/api/properties/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
-      toast({ title: "Property updated successfully!" });
+      if (user?.role === "user") {
+        queryClient.invalidateQueries({ queryKey: ["/api/my-properties", user.id] });
+        setTimeout(() => queryClient.refetchQueries({ queryKey: ["/api/my-properties", user.id] }), 200);
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+        setTimeout(() => queryClient.refetchQueries({ queryKey: ["/api/properties"] }), 200);
+      }
+      toast({ title: "Property updated!" });
       setDialogOpen(false);
       setEditingProperty(null);
       form.reset();
@@ -98,22 +247,62 @@ export default function Dashboard() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/properties/${id}`, {});
+  return await apiRequest("DELETE", `/api/properties/${id}`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
-      toast({ title: "Property deleted successfully!" });
+      if (user?.role === "user") {
+        queryClient.invalidateQueries({ queryKey: ["/api/my-properties", user.id] });
+        setTimeout(() => queryClient.refetchQueries({ queryKey: ["/api/my-properties", user.id] }), 200);
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+        setTimeout(() => queryClient.refetchQueries({ queryKey: ["/api/properties"] }), 200);
+      }
+      toast({ title: "Property deleted!" });
     },
     onError: () => {
       toast({ title: "Failed to delete property", variant: "destructive" });
     },
   });
 
-  const onSubmit = (data: InsertProperty) => {
+  // Form submit handler
+  const onSubmit = (data: InsertPropertyForm) => {
+    // Ensure amenities is always an array
+    const amenitiesArray = typeof data.amenities === "string"
+      ? data.amenities.split(",").map((s: string) => s.trim()).filter(Boolean)
+      : Array.isArray(data.amenities)
+        ? data.amenities
+        : [];
+    // Images are always string[] from form
+    const imagesArray = Array.isArray(data.images) ? data.images : [];
+    // Ensure ownerId is always a string
+    const ownerId = user?.id ? String(user.id) : "";
     if (editingProperty) {
-      updateMutation.mutate({ id: editingProperty.id, data });
+      updateMutation.mutate({
+        id: editingProperty.id,
+        data: {
+          ...data,
+          amenities: amenitiesArray, // always array
+          images: imagesArray,
+          ownerId,
+        },
+      }, {
+        onError: (error) => {
+          console.error('Update property error:', error);
+        }
+      });
     } else {
-      createMutation.mutate(data);
+      // Remove amenities from spread, set explicitly as array
+      const { amenities, ...rest } = data;
+      createMutation.mutate({
+  ...rest,
+  amenities: amenitiesArray as any, // Cast to any to bypass type error
+        images: imagesArray,
+        ownerId,
+      }, {
+        onError: (error) => {
+          console.error('Create property error:', error);
+        }
+      });
     }
   };
 
@@ -126,11 +315,11 @@ export default function Dashboard() {
       area: property.area,
       propertyType: property.propertyType,
       price: property.price,
-      bedrooms: property.bedrooms || 0,
-      bathrooms: property.bathrooms || 0,
-      sqft: property.sqft,
-      images: property.images,
-      amenities: property.amenities,
+      bedrooms: property.bedrooms ?? 0,
+      bathrooms: property.bathrooms ?? 0,
+      sqft: property.sqft ?? 0,
+      images: property.images ?? [],
+      amenities: Array.isArray(property.amenities) ? property.amenities.join(", ") : (property.amenities ?? ""),
       latitude: property.latitude || "0",
       longitude: property.longitude || "0",
       status: property.status,
@@ -168,10 +357,10 @@ export default function Dashboard() {
               <div className="bg-card rounded-lg shadow-lg p-8 w-full max-w-sm flex flex-col items-center">
                 <h2 className="text-xl font-semibold mb-4">Sign in or Sign up to add a property</h2>
                 <div className="flex gap-4 w-full">
-                  <Button className="w-1/2" variant="outline" onClick={() => { setShowAuthDialog(false); navigate("/login"); }}>Login</Button>
+                  <Button className="w-1/2" onClick={() => { setShowAuthDialog(false); navigate("/login"); }}>Login</Button>
                   <Button className="w-1/2" onClick={() => { setShowAuthDialog(false); navigate("/signup"); }}>Sign Up</Button>
                 </div>
-                <Button className="mt-6 w-full" variant="ghost" onClick={() => setShowAuthDialog(false)}>Cancel</Button>
+                <Button className="mt-6 w-full" onClick={() => setShowAuthDialog(false)}>Cancel</Button>
               </div>
             </div>
           )}
@@ -189,6 +378,26 @@ export default function Dashboard() {
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {user?.role === "user" && (
+                      <FormField
+                        control={form.control}
+                        name="mobile"
+                        rules={{
+                          required: "Mobile number is required",
+                          validate: (value: string) =>
+                            /^\d{10,}$/.test(value.trim()) || "Enter a valid 10+ digit mobile number",
+                        }}
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>Mobile Number</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g., 9876543210" {...field} data-testid="input-mobile" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                     <FormField
                       control={form.control}
                       name="title"
@@ -288,8 +497,11 @@ export default function Dashboard() {
                             <Input
                               type="number"
                               {...field}
-                              value={field.value ?? 0}
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              value={field.value === 0 || field.value == null ? "" : field.value}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === "" ? "" : parseInt(val));
+                              }}
                               data-testid="input-bedrooms"
                             />
                           </FormControl>
@@ -308,8 +520,11 @@ export default function Dashboard() {
                             <Input
                               type="number"
                               {...field}
-                              value={field.value ?? 0}
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              value={field.value === 0 || field.value == null ? "" : field.value}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === "" ? "" : parseInt(val));
+                              }}
                               data-testid="input-bathrooms"
                             />
                           </FormControl>
@@ -328,8 +543,11 @@ export default function Dashboard() {
                             <Input
                               type="number"
                               {...field}
-                              value={field.value ?? 0}
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              value={field.value === 0 ? "" : field.value}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === "" ? "" : parseInt(val));
+                              }}
                               data-testid="input-sqft"
                             />
                           </FormControl>
@@ -363,8 +581,6 @@ export default function Dashboard() {
                       render={({ field }) => (
                         <FormItem className="md:col-span-2">
                           <FormLabel>Images</FormLabel>
-
-                          {/* File upload + previews */}
                           <div className="mb-2 flex items-center gap-3">
                             <input
                               ref={uploadInputRef}
@@ -386,8 +602,9 @@ export default function Dashboard() {
                                 );
                                 try {
                                   const dataUrls = await Promise.all(readers);
-                                  field.onChange([...(field.value || []), ...dataUrls]);
-                                  // clear the input so same file can be picked again
+                                  // Merge with existing images
+                                  const currentImages = Array.isArray(field.value) ? field.value : [];
+                                  field.onChange([...currentImages, ...dataUrls]);
                                   (e.target as HTMLInputElement).value = "";
                                 } catch (err) {
                                   // ignore for now
@@ -402,13 +619,10 @@ export default function Dashboard() {
                             >
                               Upload Images
                             </button>
-
-                            <span className="text-sm text-muted-foreground">or paste image URLs below (comma-separated)</span>
                           </div>
-
                           {/* Thumbnails / previews */}
                           <div className="flex flex-wrap gap-3 mb-3">
-                            {(field.value || []).map((img, idx) => (
+                            {(Array.isArray(field.value) ? field.value : []).map((img, idx) => (
                               <div key={idx} className="relative w-28 h-20 rounded overflow-hidden border">
                                 <img
                                   src={img}
@@ -422,7 +636,8 @@ export default function Dashboard() {
                                   type="button"
                                   className="absolute top-1 right-1 bg-white/80 rounded-full p-1 text-xs"
                                   onClick={() => {
-                                    const next = (field.value || []).filter((_, i) => i !== idx);
+                                    const imgs = Array.isArray(field.value) ? field.value : [];
+                                    const next = imgs.filter((_, i) => i !== idx);
                                     field.onChange(next);
                                   }}
                                   aria-label={`Remove image ${idx}`}
@@ -432,17 +647,6 @@ export default function Dashboard() {
                               </div>
                             ))}
                           </div>
-
-                          {/* URL textarea (keeps backward compatibility) */}
-                          <FormControl>
-                            <Textarea
-                              placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
-                              rows={2}
-                              value={(field.value || []).filter(Boolean).join(", ")}
-                              onChange={(e) => field.onChange(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
-                              data-testid="textarea-images"
-                            />
-                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -458,8 +662,8 @@ export default function Dashboard() {
                             <Textarea
                               placeholder="Swimming Pool, Gym, Parking, 24/7 Security"
                               rows={2}
-                              value={field.value.join(", ")}
-                              onChange={(e) => field.onChange(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+                              value={field.value}
+                              onChange={(e) => field.onChange(e.target.value)}
                               data-testid="textarea-amenities"
                             />
                           </FormControl>
@@ -486,10 +690,24 @@ export default function Dashboard() {
                     />
                   </div>
 
+                  {/* Show form errors if any */}
+                  {Object.keys(form.formState.errors).length > 0 && (
+                    <div className="text-red-500 text-sm mb-2">
+                      {Object.entries(form.formState.errors).map(([key, err]) => (
+                        <div key={key}>{key}: {err?.message?.toString() || "Invalid value"}</div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Show mutation error if any */}
+                  {createMutation.isError && (
+                    <div className="text-red-500 text-sm mb-2">
+                      {createMutation.error?.message || "Failed to add property"}
+                    </div>
+                  )}
                   <div className="flex gap-3">
                     <Button
                       type="button"
-                      variant="outline"
+                      
                       onClick={() => {
                         setDialogOpen(false);
                         setEditingProperty(null);
@@ -501,7 +719,7 @@ export default function Dashboard() {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={createMutation.isPending || updateMutation.isPending}
+                      disabled={false}
                       data-testid="button-submit"
                     >
                       {editingProperty ? "Update" : "Add"} Property
@@ -537,23 +755,132 @@ export default function Dashboard() {
             {/* Admin dashboard: show all properties, including pending for approval */}
             {user?.role === "admin" && properties && properties.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {properties.map((property) => {
+                  // Handler to navigate to property details
+                  const goToDetails = () => navigate(`/property/${property.id}`);
+                  return (
+                    <Card
+                      key={property.id}
+                      className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                      data-testid={`card-dashboard-property-${property.id}`}
+                      onClick={goToDetails}
+                      tabIndex={0}
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') goToDetails(); }}
+                      role="button"
+                      aria-label={`View details for ${property.title}`}
+                    >
+                      <div className="relative h-48 bg-muted group" style={{ cursor: 'pointer' }}>
+                        {property.images[0] && (
+                          <img
+                            src={property.images[0]}
+                            alt={property.title}
+                            className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
+                            onClick={e => { e.stopPropagation(); goToDetails(); }}
+                            style={{ cursor: 'pointer' }}
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1200\" height=\"600\"><rect width=\"100%\" height=\"100%\" fill=\"%23eef2f4\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"%23999\" font-family=\"Arial,Helvetica,sans-serif\" font-size=\"28\">Image not available</text></svg>'; }}
+                          />
+                        )}
+                        <div className="absolute top-4 left-4 flex gap-3 z-30">
+                          {property.featured === 1 && (
+                            <Badge className="px-3 py-1 bg-amber-500 text-white rounded-full shadow text-xs font-semibold">Featured</Badge>
+                          )}
+                          <Badge className={`px-3 py-1 rounded-full shadow text-xs font-semibold ${property.status === 'sold' ? 'bg-red-500 text-white' : property.status === 'pending' ? 'bg-gray-400 text-white' : 'bg-green-400 text-white'}`}>
+                            {property.status === 'sold' ? 'Sold Out' : property.status === 'pending' ? 'Pending' : 'Available'}
+                          </Badge>
+                        </div>
+                      </div>
+                      <CardContent className="pt-6">
+                        <Badge className="mb-3">{property.propertyType}</Badge>
+                        <h3 className="font-serif font-semibold text-lg mb-2 line-clamp-1">
+                          {property.title}
+                        </h3>
+                        <p className="text-muted-foreground text-sm flex items-center gap-1 mb-4">
+                          <MapPin className="h-4 w-4" />
+                          {property.area}, {property.city}
+                        </p>
+                        <p className="font-bold text-xl text-primary">
+                          ₹{Number(property.price).toLocaleString('en-IN')}
+                        </p>
+                        {property.mobile && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            <span className="font-semibold">Mobile:</span> {property.mobile}
+                          </p>
+                        )}
+                      </CardContent>
+                      <CardFooter className="flex flex-col md:flex-row flex-wrap gap-2 md:gap-4">
+                        <Button
+                          className="w-full md:w-auto flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white"
+                          onClick={e => { e.stopPropagation(); openEditDialog(property); }}
+                          data-testid={`button-edit-${property.id}`}
+                        >
+                          <Edit className="h-4 w-4" />
+                          Edit
+                        </Button>
+                        <Button
+                          className="w-full md:w-auto flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+                          onClick={e => { e.stopPropagation(); deleteMutation.mutate(property.id); }}
+                          disabled={deleteMutation.isPending}
+                          data-testid={`button-delete-${property.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </Button>
+                        {/* Always show all status update buttons for admin */}
+                        {user?.role === "admin" && (
+                          <>
+                            <Button
+                              className="w-full md:w-auto flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                              onClick={e => { e.stopPropagation(); approveMutation.mutate(property.id); }}
+                              disabled={approveMutation.isPending}
+                              data-testid={`button-approve-${property.id}`}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              className="w-full md:w-auto flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+                              onClick={e => { e.stopPropagation(); rejectMutation.mutate(property.id); }}
+                              disabled={rejectMutation.isPending}
+                              data-testid={`button-reject-${property.id}`}
+                            >
+                              Reject
+                            </Button>
+                            <Button
+                              className="w-full md:w-auto flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white"
+                              onClick={e => { e.stopPropagation(); markSoldMutation.mutate(property.id); }}
+                              disabled={markSoldMutation.isPending}
+                              data-testid={`button-mark-sold-${property.id}`}
+                            >
+                              Mark as Sold
+                            </Button>
+                          </>
+                        )}
+                      </CardFooter>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* User dashboard: show all properties returned from /api/my-properties, with status and edit/delete options. Only remove if deleted. */}
+            {user?.role === "user" && properties && properties.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {properties.map((property) => (
-                  <Card key={property.id} className="overflow-hidden" data-testid={`card-dashboard-property-${property.id}`}>
+                  <Card key={property.id} className="overflow-hidden" data-testid={`card-dashboard-property-${property.id}`}> 
                     <div className="relative h-48 bg-muted">
                       {property.images[0] && (
                         <img
                           src={property.images[0]}
                           alt={property.title}
                           className="w-full h-full object-cover"
-                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600"><rect width="100%" height="100%" fill="%23eef2f4"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23999" font-family="Arial,Helvetica,sans-serif" font-size="28">Image not available</text></svg>'; }}
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1200\" height=\"600\"><rect width=\"100%\" height=\"100%\" fill=\"%23eef2f4\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"%23999\" font-family=\"Arial,Helvetica,sans-serif\" font-size=\"28\">Image not available</text></svg>'; }}
                         />
                       )}
                       <div className="absolute top-4 left-4 flex gap-3 z-30">
                         {property.featured === 1 && (
                           <Badge className="px-3 py-1 bg-amber-500 text-white rounded-full shadow text-xs font-semibold">Featured</Badge>
                         )}
-                        <Badge className={`px-3 py-1 rounded-full shadow text-xs font-semibold ${property.status === 'sold' ? 'bg-red-500 text-white' : property.status === 'pending' ? 'bg-gray-400 text-white' : 'bg-green-400 text-white'}`}>
-                          {property.status === 'sold' ? 'Sold Out' : property.status === 'pending' ? 'Pending' : 'Available'}
+                        <Badge className={`px-3 py-1 rounded-full shadow text-xs font-semibold ${property.status === 'sold' ? 'bg-red-500 text-white' : property.status === 'pending' ? 'bg-gray-400 text-white' : property.status === 'rejected' ? 'bg-yellow-700 text-white' : property.status === 'available' ? 'bg-green-400 text-white' : 'bg-blue-500 text-white'}`}>
+                          {property.status === 'sold' ? 'Sold Out' : property.status === 'pending' ? 'Pending' : property.status === 'rejected' ? 'Rejected' : property.status === 'available' ? 'Approved' : property.status}
                         </Badge>
                       </div>
                     </div>
@@ -570,10 +897,10 @@ export default function Dashboard() {
                         ₹{Number(property.price).toLocaleString('en-IN')}
                       </p>
                     </CardContent>
-                    <CardFooter className="flex flex-col md:flex-row gap-2 md:gap-4">
+                    <div className="flex gap-3 px-6 pb-6">
                       <Button
-                        variant="outline"
-                        className="w-full md:w-auto flex items-center justify-center gap-2"
+                        
+                        className="w-full flex items-center justify-center gap-2"
                         onClick={() => openEditDialog(property)}
                         data-testid={`button-edit-${property.id}`}
                       >
@@ -581,8 +908,8 @@ export default function Dashboard() {
                         Edit
                       </Button>
                       <Button
-                        variant="destructive"
-                        className="w-full md:w-auto flex items-center justify-center gap-2"
+                        
+                        className="w-full flex items-center justify-center gap-2"
                         onClick={() => deleteMutation.mutate(property.id)}
                         disabled={deleteMutation.isPending}
                         data-testid={`button-delete-${property.id}`}
@@ -590,66 +917,10 @@ export default function Dashboard() {
                         <Trash2 className="h-4 w-4" />
                         Delete
                       </Button>
-                      {property.status === "pending" && (
-                        <Button
-                          variant="default"
-                          className="w-full md:w-auto flex items-center justify-center gap-2"
-                          onClick={() => approveMutation.mutate(property.id)}
-                          disabled={approveMutation.isPending}
-                          data-testid={`button-approve-${property.id}`}
-                        >
-                          Approve
-                        </Button>
-                      )}
-                    </CardFooter>
+                    </div>
                   </Card>
                 ))}
               </div>
-            )}
-
-            {/* Regular user dashboard: show only user's properties that are approved */}
-            {user?.role === "user" && (
-              <>
-                {properties && properties.filter(p => p.status === "available" && p.ownerId === user.id).length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {properties.filter(p => p.status === "available" && p.ownerId === user.id).map((property) => (
-                      <Card key={property.id} className="overflow-hidden" data-testid={`card-dashboard-property-${property.id}`}>
-                        <div className="relative h-48 bg-muted">
-                          {property.images[0] && (
-                            <img
-                              src={property.images[0]}
-                              alt={property.title}
-                              className="w-full h-full object-cover"
-                              onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1200\" height=\"600\"><rect width=\"100%\" height=\"100%\" fill=\"%23eef2f4\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"%23999\" font-family=\"Arial,Helvetica,sans-serif\" font-size=\"28\">Image not available</text></svg>'; }}
-                            />
-                          )}
-                          <div className="absolute top-4 left-4 flex gap-3 z-30">
-                            {property.featured === 1 && (
-                              <Badge className="px-3 py-1 bg-amber-500 text-white rounded-full shadow text-xs font-semibold">Featured</Badge>
-                            )}
-                            <Badge className={`px-3 py-1 rounded-full shadow text-xs font-semibold bg-green-400 text-white`}>
-                              Available
-                            </Badge>
-                          </div>
-                        </div>
-                        <CardContent className="pt-6">
-                          <Badge className="mb-3">{property.propertyType}</Badge>
-                          <h3 className="font-serif font-semibold text-lg mb-2 line-clamp-1">
-                            {property.title}
-                          </h3>
-                          <p className="text-muted-foreground text-sm flex items-center gap-1 mb-4">
-                            <MapPin className="h-4 w-4" />
-                            {property.area}, {property.city}
-                          </p>
-                          <p className="font-bold text-xl text-primary">
-                            ₹{Number(property.price).toLocaleString('en-IN')}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : null}
-              </>
             )}
 
             {/* If no user, show nothing except Add Property */}
@@ -660,3 +931,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

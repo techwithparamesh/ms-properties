@@ -19,6 +19,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { contactFormSchema, type Property, type Blog, type ContactForm } from "@shared/schema";
 
 export default function Home() {
+  const { data: properties, isLoading: isLoadingProperties, error: propertiesError } = useQuery<Property[]>({
+    queryKey: ["/api/properties"],
+  });
   const [selectedCity, setSelectedCity] = useState<string>("");
   const [searchArea, setSearchArea] = useState("");
   const { toast } = useToast();
@@ -31,10 +34,10 @@ export default function Home() {
       phone: "",
       message: "",
     },
-  });
-
-  const { data: properties, isLoading: isLoadingProperties, error: propertiesError } = useQuery<Property[]>({
-    queryKey: ["/api/properties"],
+      name: "Priya Sharma",
+      role: "Villa Owner",
+      rating: 5,
+      content: "I am extremely happy with the service provided by MS Properties. They made the process of buying my villa smooth and hassle-free. Highly recommended!",
   });
 
   const { data: blogs, isLoading: isLoadingBlogs, error: blogsError } = useQuery<Blog[]>({
@@ -79,13 +82,13 @@ export default function Home() {
     {
       name: "Rajesh Kumar",
       role: "Property Buyer",
-      content: "Dream Dwellings helped me find my perfect home in Tirupati. The process was seamless and professional.",
+      content: "MS Properties helped me find my perfect home in Tirupati. The process was seamless and professional.",
       rating: 5,
     },
     {
       name: "Priya Sharma",
       role: "Villa Owner",
-  // Removed Kadapa testimonial
+      content: "I am extremely happy with the service provided by MS Properties. They made the process of buying my villa smooth and hassle-free. Highly recommended!",
       rating: 5,
     },
     {
@@ -429,7 +432,7 @@ export default function Home() {
                 allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                title="Dream Dwellings Location"
+                title="MS Properties Location"
               />
             </div>
           </div>
@@ -438,3 +441,4 @@ export default function Home() {
     </div>
   );
 }
+

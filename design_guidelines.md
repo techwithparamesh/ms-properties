@@ -1,4 +1,4 @@
-# Dream Dwellings Real Estate Website - Design Guidelines
+# MS Properties Real Estate Website - Design Guidelines
 
 ## Design Approach
 **Reference-Based Approach**: Inspired by Housing.com and PropertyWala's clean property showcase layouts and intuitive filtering systems. These platforms excel at presenting property information clearly while maintaining visual appeal and professional credibility.

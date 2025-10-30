@@ -52,6 +52,8 @@ export class MemStorage implements IStorage {
       longitude: insertProperty.longitude ?? null,
       status: insertProperty.status ?? "available",
       featured: insertProperty.featured ?? 0,
+      ownerId: insertProperty.ownerId,
+      mobile: insertProperty.mobile ?? "",
     } as unknown as Property;
     this.properties.set(id, property);
     return property;
@@ -78,6 +80,8 @@ export class MemStorage implements IStorage {
       longitude: insertProperty.longitude ?? null,
       status: insertProperty.status ?? "available",
       featured: insertProperty.featured ?? 0,
+      ownerId: insertProperty.ownerId,
+      mobile: insertProperty.mobile ?? "",
     } as unknown as Property;
     this.properties.set(id, property);
     return property;
@@ -99,7 +103,8 @@ export class MemStorage implements IStorage {
   // Seed initial data
   private seedData() {
     // Seed Properties
-    const sampleProperties: InsertProperty[] = [
+    const sampleOwnerId = "demo-user-1";
+  const sampleProperties: InsertProperty[] = [
       {
         title: "Elegant 4BHK Penthouse with City View",
         description: "Experience luxury living in this spacious 4BHK penthouse featuring panoramic city views, private terrace, and premium amenities. Ideal for families seeking comfort and style.",
@@ -118,6 +123,8 @@ export class MemStorage implements IStorage {
         longitude: "79.4200",
         status: "available",
         featured: 1,
+  ownerId: sampleOwnerId,
+  mobile: "9999999999",
       },
       {
         title: "Luxury 3BHK Villa in Renigunta Road",
@@ -137,6 +144,7 @@ export class MemStorage implements IStorage {
         longitude: "79.4192",
         status: "available",
         featured: 1,
+        ownerId: sampleOwnerId,
       },
       {
         title: "Modern 2BHK Apartment Near Tirumala",
@@ -156,6 +164,7 @@ export class MemStorage implements IStorage {
         longitude: "79.4189",
         status: "available",
         featured: 1,
+        ownerId: sampleOwnerId,
       },
       {
         title: "Spacious Independent House in Gandhi Nagar",
@@ -175,6 +184,7 @@ export class MemStorage implements IStorage {
         longitude: "79.4192",
         status: "available",
         featured: 0,
+        ownerId: sampleOwnerId,
       },
       {
         title: "Cozy 1BHK Apartment in University Area",
@@ -194,6 +204,7 @@ export class MemStorage implements IStorage {
         longitude: "79.4065",
         status: "available",
         featured: 0,
+        ownerId: sampleOwnerId,
       },
       {
         title: "2BHK Furnished Apartment near Bus Stand",
@@ -213,6 +224,7 @@ export class MemStorage implements IStorage {
         longitude: "79.4100",
         status: "available",
         featured: 0,
+        ownerId: sampleOwnerId,
       },
       {
         title: "Family Independent House in Old Town",
@@ -232,6 +244,7 @@ export class MemStorage implements IStorage {
         longitude: "79.4170",
         status: "available",
         featured: 0,
+        ownerId: sampleOwnerId,
       },
       {
         title: "Sunny 3BHK Apartment by the Park",
@@ -251,6 +264,7 @@ export class MemStorage implements IStorage {
         longitude: "79.4205",
         status: "available",
         featured: 0,
+        ownerId: sampleOwnerId,
       },
       {
         title: "Countryside Luxury Villa",
@@ -270,6 +284,7 @@ export class MemStorage implements IStorage {
         longitude: "79.4210",
         status: "available",
         featured: 0,
+        ownerId: sampleOwnerId,
       },
       {
         title: "Renovated Colonial House",
@@ -289,6 +304,7 @@ export class MemStorage implements IStorage {
         longitude: "79.4220",
         status: "available",
         featured: 0,
+        ownerId: sampleOwnerId,
       },
       {
         title: "Corner Commercial Plot",
@@ -306,6 +322,7 @@ export class MemStorage implements IStorage {
         longitude: "79.4150",
         status: "available",
         featured: 0,
+        ownerId: sampleOwnerId,
       },
   ];
 
@@ -346,7 +363,7 @@ export class MemStorage implements IStorage {
         excerpt: "Practical advice for new investors: budgeting, legal checks, location, and more. Avoid common mistakes and make smart property decisions.",
         content: `Investing in real estate can be a rewarding way to build wealth and secure your financial future. Whether you're buying your first apartment, a plot, or a commercial space, these tips will help you make smart decisions and avoid common pitfalls.\n\n1. **Research the Market:** Study local trends, property prices, and future development plans. Understanding the market helps you spot good deals and avoid overpriced properties.\n\n2. **Set a Realistic Budget:** Factor in not just the property cost, but also registration fees, taxes, maintenance, and possible renovation expenses.\n\n3. **Check Legal Clearances:** Ensure the property has clear titles, necessary approvals, and is free from disputes. Consult a legal expert if needed.\n\n4. **Location Matters:** Choose areas with good connectivity, infrastructure, and growth potential. Proximity to schools, hospitals, and markets adds value.\n\n5. **Inspect the Property:** Visit the site, check construction quality, amenities, and talk to neighbors for honest feedback.\n\n6. **Plan for the Long Term:** Real estate is best suited for long-term investment. Be patient and avoid panic selling during market fluctuations.\n\n7. **Consult Professionals:** Work with trusted real estate agents, lawyers, and financial advisors to guide your purchase and paperwork.\n\n---\n\n**Quick Checklist Before You Buy:**\n- Verify builder reputation and track record\n- Check RERA registration for new projects\n- Review payment plans and loan options\n- Understand resale potential and rental yields\n\nInvesting in property is a big step—take your time, do your homework, and seek expert advice. Happy house hunting!`,
         category: "Investment Tips",
-        author: "Dream Dwellings Team",
+  author: "MS Properties Team",
         date: "2025-10-13",
         featuredImage: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200",
       },
@@ -435,3 +452,4 @@ Always consult a legal expert before finalizing any property transaction. Proper
 }
 
 export const storage = new MemStorage();
+

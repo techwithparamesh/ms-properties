@@ -1,3 +1,4 @@
+import React from "react";
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -24,16 +25,24 @@ export default function Login() {
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "" },
   });
-
+  const [error, setError] = React.useState<string | null>(null);
   const onSubmit = async (values: FormValues) => {
-    await login(values);
-  navigate("/");
+    setError(null);
+    try {
+      await login(values);
+      navigate("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    }
   };
 
   return (
     <div className="max-w-md mx-auto py-20 px-4">
       <div className="bg-card p-6 rounded-lg shadow">
         <h2 className="text-xl font-semibold mb-4">Sign in to your account</h2>
+	{error && (
+          <div className="mb-4 text-red-600 text-sm text-center">{error}</div>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField name="email" control={form.control} render={({ field }) => (

@@ -100,7 +100,7 @@ export default function PropertyDetail() {
 
         {/* Image Gallery */}
         <div className="relative h-96 lg:h-[500px] rounded-lg overflow-hidden mb-8 bg-muted">
-          {property.images.length > 0 && (
+          {Array.isArray(property.images) && property.images.length > 0 && (
             <>
               <img
                 src={property.images[currentImageIndex]}
@@ -311,7 +311,7 @@ export default function PropertyDetail() {
                       variant="outline"
                       className="gap-2"
                       onClick={() => {
-                        window.location.href = 'tel:9908547461';
+                        window.location.href = 'tel:9160031342';
                       }}
                     >
                       <Phone className="h-4 w-4" />
@@ -353,7 +353,7 @@ export default function PropertyDetail() {
                   className="w-full gap-2"
                   data-testid="button-call"
                   onClick={() => {
-                    window.location.href = 'tel:9908547461';
+                    window.location.href = 'tel:9160031342';
                   }}
                 >
                   <Phone className="h-4 w-4" />
@@ -377,7 +377,7 @@ export default function PropertyDetail() {
               <div className="mt-6 pt-6 border-t border-border space-y-3">
                 <div className="flex items-center gap-2 text-sm">
                   <Phone className="h-4 w-4 text-primary" />
-                  <span className="text-muted-foreground">+91 9908547461</span>
+                  <span className="text-muted-foreground">+91 9160031342</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Mail className="h-4 w-4 text-primary" />
@@ -391,3 +391,4 @@ export default function PropertyDetail() {
     </div>
   );
 }
+

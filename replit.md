@@ -1,7 +1,7 @@
-# Dream Dwellings - Real Estate Website
+# MS Properties - Real Estate Website
 
 ## Overview
-Dream Dwellings is a modern, fully responsive real estate website built with React (TypeScript), Vite, and Tailwind CSS. The platform serves properties in Tirupati with comprehensive property management features.
+MS Properties is a modern, fully responsive real estate website built with React (TypeScript), Vite, and Tailwind CSS. The platform serves properties in Tirupati with comprehensive property management features.
 
 ## Project Status
 - **Current State**: MVP Complete - All phases implemented

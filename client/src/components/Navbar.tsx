@@ -27,7 +27,7 @@ export default function Navbar() {
           <Link href="/" data-testid="link-home">
             <div className="flex items-center gap-2 cursor-pointer hover-elevate active-elevate-2 px-3 py-2 rounded-md">
               <Building2 className="h-7 w-7 text-primary" />
-              <span className="font-serif font-bold text-xl text-foreground">Dream Dwellings</span>
+              <span className="font-serif font-bold text-xl text-foreground">MS Properties</span>
             </div>
           </Link>
 
@@ -117,3 +117,4 @@ export default function Navbar() {
     </nav>
   );
 }
+

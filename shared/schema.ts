@@ -17,6 +17,7 @@ export const properties = pgTable("properties", {
   sqft: integer("sqft").notNull(),
   images: text("images").array().notNull(),
   amenities: text("amenities").array().notNull(),
+  mobile: varchar("mobile", { length: 20 }), // Only visible to admin
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
   status: text("status").notNull().default("available"), // available, sold, pending
@@ -24,9 +25,29 @@ export const properties = pgTable("properties", {
   ownerId: varchar("owner_id").notNull(), // User ID of property owner
 });
 
-export const insertPropertySchema = createInsertSchema(properties).omit({
-  id: true,
-});
+export const insertPropertySchema = createInsertSchema(properties)
+  .omit({ id: true })
+  .extend({
+    amenities: z.preprocess(
+      (val) => {
+        if (typeof val === "string") {
+          return val.split(",").map((s) => s.trim()).filter(Boolean);
+        }
+        return val;
+      },
+      z.array(z.string())
+    ),
+    images: z.preprocess(
+      (val) => {
+        if (typeof val === "string") {
+          return val.split(",").map((s) => s.trim()).filter(Boolean);
+        }
+        return val;
+      },
+      z.array(z.string())
+    ),
+    mobile: z.string().min(10).max(20).optional(),
+  });
 
 export type InsertProperty = z.infer<typeof insertPropertySchema>;
 export type Property = typeof properties.$inferSelect;
@@ -59,3 +80,4 @@ export const contactFormSchema = z.object({
 });
 
 export type ContactForm = z.infer<typeof contactFormSchema>;
+

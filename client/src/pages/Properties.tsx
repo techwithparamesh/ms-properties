@@ -17,11 +17,13 @@ export default function Properties() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
-  // Filter and search logic
-  const filteredProperties = properties.filter((p) =>
-    p.title.toLowerCase().includes(search.toLowerCase()) &&
-    (filterStatus === "all" || p.status === filterStatus)
-  );
+  // Only show available properties to the public
+  const filteredProperties = properties
+    .filter((p) => p.status === "available")
+    .filter((p) =>
+      p.title.toLowerCase().includes(search.toLowerCase()) &&
+      (filterStatus === "all" || p.status === filterStatus)
+    );
 
   return (
     <div className="min-h-screen bg-background py-8">
@@ -156,3 +158,4 @@ export default function Properties() {
     </div>
   );
 }
+

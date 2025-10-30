@@ -11,7 +11,7 @@ export default function Footer() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Building2 className="h-6 w-6 text-primary" />
-              <span className="font-serif font-bold text-lg">Dream Dwellings</span>
+              <span className="font-serif font-bold text-lg">MS Properties</span>
             </div>
             <p className="text-muted-foreground text-sm">
               Your trusted partner in finding the perfect property in Tirupati.
@@ -62,7 +62,7 @@ export default function Footer() {
               <ul className="space-y-3 text-sm text-muted-foreground mb-0">
                 <li className="flex items-center gap-2">
                   <Phone className="h-5 w-5 text-primary" />
-                  <span>+91 9908547461</span>
+                  <span>+91 9160031342</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Mail className="h-5 w-5 text-primary" />
@@ -93,6 +93,10 @@ export default function Footer() {
                   className="flex items-center justify-center rounded-full bg-red-100 hover:bg-red-500 w-10 h-10 transition-colors shadow-md">
                   <img src="/icons/gmail.png" alt="Gmail" className="w-7 h-7 rounded-full object-cover" onError={e => {e.currentTarget.src='/icons/gmail.png'; e.currentTarget.alt='Gmail icon'}} />
                 </a>
+                <a href={SOCIAL_LINKS.youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube"
+                  className="flex items-center justify-center rounded-full bg-red-100 hover:bg-red-600 w-10 h-10 transition-colors shadow-md">
+                  <img src="/icons/youtube.png" alt="YouTube" className="w-7 h-7 rounded-full object-cover" onError={e => {e.currentTarget.src='/icons/youtube.png'; e.currentTarget.alt='YouTube icon'}} />
+                </a>
               </div>
               </div>
             </div>
@@ -100,8 +104,9 @@ export default function Footer() {
         </div>
 
         <div className="mt-8 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} Dream Dwellings. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} MS Properties. All rights reserved.</p>
         </div>
     </footer>
   );
 }
+
